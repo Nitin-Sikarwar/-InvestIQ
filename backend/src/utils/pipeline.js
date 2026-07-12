@@ -4,30 +4,46 @@ import { runRiskAnalysisChain } from "../chains/riskAnalysis.js";
 import { runGrowthAnalysisChain } from "../chains/growthAnalysis.js";
 import { runInvestmentDecisionChain } from "../chains/investmentDecision.js";
 
-/**
- * Orchestrates the full 5-stage AI investment research pipeline.
- * Each stage builds on the previous, passing accumulated context forward.
- */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function withRetry(fn, retries = 3, delay = 10000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i < retries - 1 && (err?.status === 429 || err?.message?.includes("429"))) {
+        await sleep(delay);
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 export async function runResearchPipeline(company, onProgress) {
   onProgress("stage1", "Researching company overview...");
-  const overview = await runCompanyOverviewChain(company);
+  const overview = await withRetry(() => runCompanyOverviewChain(company));
 
+  await sleep(3000);
   onProgress("stage2", "Analyzing business fundamentals...");
-  const businessAnalysis = await runBusinessAnalysisChain(company, overview);
+  const businessAnalysis = await withRetry(() => runBusinessAnalysisChain(company, overview));
 
+  await sleep(3000);
   onProgress("stage3", "Evaluating risks...");
-  const riskAnalysis = await runRiskAnalysisChain(company, { overview, businessAnalysis });
+  const riskAnalysis = await withRetry(() => runRiskAnalysisChain(company, { overview, businessAnalysis }));
 
+  await sleep(3000);
   onProgress("stage4", "Assessing growth potential...");
-  const growthAnalysis = await runGrowthAnalysisChain(company, { overview, businessAnalysis, riskAnalysis });
+  const growthAnalysis = await withRetry(() => runGrowthAnalysisChain(company, { overview, businessAnalysis, riskAnalysis }));
 
+  await sleep(3000);
   onProgress("stage5", "Making investment decision...");
-  const decision = await runInvestmentDecisionChain(company, {
+  const decision = await withRetry(() => runInvestmentDecisionChain(company, {
     overview,
     businessAnalysis,
     riskAnalysis,
     growthAnalysis,
-  });
+  }));
 
   return {
     company,
