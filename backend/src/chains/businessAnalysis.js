@@ -2,6 +2,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "langchain/output_parsers";
 import { z } from "zod";
 import { getLLM } from "../utils/llm.js";
+import { cleanJson } from "../utils/cleanJson.js";
 
 const schema = z.object({
   revenueGrowth: z.string().describe("Revenue growth trend and approximate figures"),
@@ -17,7 +18,7 @@ const parser = StructuredOutputParser.fromZodSchema(schema);
 
 const prompt = PromptTemplate.fromTemplate(`
 You are a senior business analyst. Analyze the business fundamentals of "{company}".
-Use your knowledge to provide a thorough business analysis. Be specific and data-driven where possible.
+Return ONLY raw JSON with no markdown, no code blocks, no extra text.
 
 Company Overview Context:
 {overview}
@@ -29,10 +30,10 @@ Analyze the business fundamentals of: {company}
 
 export async function runBusinessAnalysisChain(company, overview) {
   const llm = getLLM();
-  const chain = prompt.pipe(llm).pipe(parser);
-  return chain.invoke({
+  const result = await prompt.pipe(llm).invoke({
     company,
     overview: JSON.stringify(overview),
     format_instructions: parser.getFormatInstructions(),
   });
+  return parser.parse(cleanJson(result.content));
 }

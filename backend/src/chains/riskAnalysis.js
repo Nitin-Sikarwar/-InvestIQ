@@ -2,6 +2,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "langchain/output_parsers";
 import { z } from "zod";
 import { getLLM } from "../utils/llm.js";
+import { cleanJson } from "../utils/cleanJson.js";
 
 const schema = z.object({
   debtRisk: z.string().describe("Debt levels and financial leverage risk"),
@@ -16,8 +17,8 @@ const schema = z.object({
 const parser = StructuredOutputParser.fromZodSchema(schema);
 
 const prompt = PromptTemplate.fromTemplate(`
-You are a risk analyst specializing in investment due diligence. Evaluate all risks for "{company}".
-Be thorough and conservative in your risk assessment.
+You are a risk analyst. Evaluate all risks for "{company}".
+Return ONLY raw JSON with no markdown, no code blocks, no extra text.
 
 Company Context:
 {context}
@@ -29,10 +30,10 @@ Perform risk analysis for: {company}
 
 export async function runRiskAnalysisChain(company, context) {
   const llm = getLLM();
-  const chain = prompt.pipe(llm).pipe(parser);
-  return chain.invoke({
+  const result = await prompt.pipe(llm).invoke({
     company,
     context: JSON.stringify(context),
     format_instructions: parser.getFormatInstructions(),
   });
+  return parser.parse(cleanJson(result.content));
 }

@@ -2,6 +2,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { StructuredOutputParser } from "langchain/output_parsers";
 import { z } from "zod";
 import { getLLM } from "../utils/llm.js";
+import { cleanJson } from "../utils/cleanJson.js";
 
 const schema = z.object({
   recommendation: z.enum(["INVEST", "PASS"]).describe("Final investment recommendation"),
@@ -18,6 +19,7 @@ const parser = StructuredOutputParser.fromZodSchema(schema);
 
 const prompt = PromptTemplate.fromTemplate(`
 You are a Chief Investment Officer. Make a final INVEST or PASS decision on "{company}".
+Return ONLY raw JSON with no markdown, no code blocks, no extra text.
 
 Business Score: {businessScore}/100
 Risk Level: {riskLevel} (Risk Score: {riskScore}/100)
@@ -31,8 +33,7 @@ Growth Opportunities: {opportunities}
 
 export async function runInvestmentDecisionChain(company, researchData) {
   const llm = getLLM();
-  const chain = prompt.pipe(llm).pipe(parser);
-  return chain.invoke({
+  const result = await prompt.pipe(llm).invoke({
     company,
     businessScore: researchData.businessAnalysis.businessScore,
     riskLevel: researchData.riskAnalysis.overallRiskLevel,
@@ -43,4 +44,5 @@ export async function runInvestmentDecisionChain(company, researchData) {
     opportunities: researchData.growthAnalysis.futureOpportunities.slice(0, 3).join(", "),
     format_instructions: parser.getFormatInstructions(),
   });
+  return parser.parse(cleanJson(result.content));
 }
