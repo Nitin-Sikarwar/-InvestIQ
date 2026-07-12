@@ -6,13 +6,7 @@ import researchRouter from "./routes/research.js";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://invest-iq-beige.vercel.app",
-    process.env.FRONTEND_URL,
-  ].filter(Boolean),
-}));
+app.use(cors());
 app.use(express.json());
 
 app.use("/api", researchRouter);
