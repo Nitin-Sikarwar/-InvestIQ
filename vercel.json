@@ -1,5 +1,11 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/build",
-  "framework": null
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "create-react-app",
+      "envVars": {
+        "REACT_APP_API_URL": "https://investiq-2h7v.onrender.com/api"
+      }
+    }
+  }
 }
